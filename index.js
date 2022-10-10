@@ -1,150 +1,135 @@
-const express = require('express');
-const morgan = require('morgan');
-const fs =require('fs');
-const path = require('path');
-const uuid    = require('uuid');
+//IMPORTS//
+const express = require("express"),
+ uuid = require("uuid");
+ const path = require("path");
+ const methodOverride = require("method-override");
+ 
 
+const morgan = require("morgan");
 
 const app = express();
-const bodyParser = require('body-parser');
-const methodOverride = require('method-override');
-
-const accessLogStream = fs.createWriteStream(path.join(__dirname, 'log.txt'),{
-  flags:'a',
-});
-
-app.use(morgan('combined', { stream: accessLogStream }
-));
-
-app.use('/documentation.html',express.static('public'));
-
-
+bodyParser = require("body-parser"),
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
   extended: true
 }));
+require('./auth')(app);
+const passport = require('./passport');
 
-app.use(bodyParser.json());
+const fs = require("fs");
+const mongoose = require("mongoose");
+const Models = require("./models.js");
+
+const Movies = Models.Movie;
+const Users = Models.User;
+const Genres = Models.Gener;
+const Directors = Models.Director;
+
+
+mongoose.connect("mongodb://localhost:27017/test", { 
+  useNewUrlParser: true, 
+  useUnifiedTopology: true,
+ });
+
+ 
+//log resuests to server
+app.use(morgan("common"));
+
+ //default text response when at /
+ app.get ("/",(req,res) =>{
+  res.send("welcom to myFlex");
+});
+
+  app.get("/users",function (req, res) {
+    Users.find()
+      .then(function(users)  {
+        res.status(201).json(users);
+      })
+      .catch(function(err) {
+        console.error(err);
+        res.status(500).send("Error: " + err);
+      });
+  });
+
+ //ES6 javascript syntax
+app.get("/movies",passport.authenticate('jwt', { session: false }), (req, res) => {
+  Movies.find()
+  .then((movies) => {
+    console.log(movies)
+  res.status(200).json(movies);
+}).catch((err) => {
+  console.error(err);
+  res.status(500).send("Error: " + err);
+});
+});
+
+
+// MORGAN //////
+// accessLogStream uses the fs and path modules to append "log.txt"
+const accessLogStream = fs.createWriteStream(
+  path.join(__dirname, "log.txt"),{
+  flags:"a",
+});
+
+// morgan pkg logs a timestamp to "log.txt"
+app.use(morgan("combined", { stream: accessLogStream }
+));
+
+app.use("/documentation.html",express.static("public"));
+
 app.use(methodOverride());
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).send('Something broke!');
+  res.status(500).send("Something broke!");
 });
 
-let users = [
-  {
-    id:4,
-    name:'khaled',
-    favoriteMovies:['note Book']
-  },
-  {
-  id:5,
-    name:'Adele',
-    favoriteMovies:['Diana Roma']
-  },
+app.post("/users", (req, res) => {
+  Users.findOne({ Username: req.body.Username })
+    .then((user) => {
+      if (user) {
+        return res.status(400).send(req.body.Username + "already exists");
+      } else {
+       
+        Users.create({
+            Username: req.body.Username,
+            Password: req.body.Password,
+            Email: req.body.Email,
+            Birthday: req.body.Birthday
+          })
+          .then((user) =>{res.status(201).json(user) })
 
-];
-
-let topMovies = [
-  {
-    title: 'Harry Potter and the Prisoner of Azkaban',
-    year: 2004,
-    genre: 'Fantasy',
-    description:
-      'Harry Potter, Ron and Hermione return to Hogwarts School of Witchcraft and Wizardry for their third year of study, where they delve into the mystery surrounding an escaped prisoner who poses a dangerous threat to the young wizard.',
-    director: 'Alfonso Cuarón',
-    image: '#',
-  },
-  {
-    title: 'Titanic',
-    year: 1997,
-    genre: 'Drama',
-    description:
-      'A seventeen-year-old aristocrat falls in love with a kind but poor artist aboard the luxurious, ill-fated R.M.S. Titanic.',
-    director: 'James Cameron',
-    image: '#',
-  },
-  {
-    title: 'The Little Mermaid',
-    year: 1989,
-    genre: 'Animation',
-    description:
-      'A mermaid princess makes a Faustian bargain in an attempt to become human and win a prince love.',
-    director: 'Ron Clements, John Musker',
-    image: '#',
-  },
-  {
-    title: 'Thor: Ragnarok',
-    year: 2017,
-    genre: 'Action, Comedy',
-    description:
-      'Imprisoned on the planet Sakaar, Thor must race against time to return to Asgard and stop Ragnarök, the destruction of his world, at the hands of the powerful and ruthless villain Hela.',
-    director: 'Taika Waititi',
-    image: '#',
-  },
-  {
-    title: 'The Shawshank Redemption',
-    year: 1994,
-    genre: 'Drama',
-    description:
-      'Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.',
-    director: 'Frank Darabont',
-    image: '#',
-  },
-];
-
-const directors = [
-  {
-    name: 'Alfonso Cuarón',
-    bio: 'Alfonso Cuarón Orozco was born on November 28th in Mexico City, Mexico.',
-    birthYear: 1961,
-    deathYear: 'N/A',
-  },
-  {
-    name: 'James Cameron',
-    bio: 'James Francis Cameron was born on August 16, 1954 in Kapuskasing, Ontario, Canada.',
-    birthYear: 1954,
-    deathYear: 'N/A',
-  },
-  {
-    name: 'Ron Clements',
-    bio: 'Ron Clements was born on April 25, 1953 in Sioux City, Iowa, USA.',
-    birthYear: 1953,
-    deathYear: 'N/A',
-  },
-  {
-    name: 'John Musker',
-    bio: 'John Musker was born on November 8, 1953 in Chicago, Illinois, USA.',
-    birthYear: 1953,
-    deathYear: 'N/A',
-  },
-  {
-    name: 'Taika Waititi',
-    bio: 'Taika Waititi, also known as Taika Cohen, hails from the Raukokore region of the East Coast of New Zealand, and is the son of Robin (Cohen), a teacher, and Taika Waititi, an artist and farmer.',
-    birthYear: 1975,
-    deathYear: 'N/A',
-  },
-  {
-    name: 'Frank Darabont',
-    bio: 'Three-time Oscar nominee Frank Darabont was born in a refugee camp in 1959 in Montbeliard, France, the son of Hungarian parents who had fled Budapest during the failed 1956 Hungarian revolution.',
-    birthYear: 1959,
-    deathYear: 'N/A',
-  },
-];
-
-app.use(morgan('common'));
-
-app.get('/', (req, res) => {
-  res.send('Welcome to Movies API!');
+        .catch((error) => {
+          console.error(error);
+          res.status(500).send("Error: " + error);
+        })
+      }
+    })
 });
 
-// List all movies
-app.get('/movies', (req, res) => {
-  res.status(200).json(topMovies);
+// Add a movie to a user"s list of favorites
+app.post("/users/:Username/movies/:MovieID", (req, res) => {
+  Users.findOneAndUpdate({ Username: req.params.Username }, {
+     $push: { FavoriteMovies: req.params.MovieID }
+   },
+   { new: true }, // This line makes sure that the updated document is returned
+  (err, updatedUser) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send("Error: " + err);
+    } else {
+      res.json(updatedUser);
+    }
+  });
+});
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname+"/public/documentation.html"));
+  // res.send("Welcome to Movies API!");
 });
 
 // Get a single movie by title
-app.get('/movies/:title', (req, res) => {
+app.get("/movies/:title", (req, res) => {
   const { title } = req.params;
   const movie = topMovies.find((movie) => movie.title === title);
   if (movie) {
@@ -154,31 +139,44 @@ app.get('/movies/:title', (req, res) => {
   }
 });
 
-app.post('/movies', (req, res) => {
+// Get a single movie by id
+app.get("/movies/id/:id", (req, res) => {
+  const { id } = req.params;
+  
+  const movie = topMovies.find((movie) => movie.movied === +id);
+  if (movie) {
+    res.status(200).json(movie);
+  } else {
+    res.status(400);
+  }
+}); 
+
+
+app.post("/movies", (req, res) => {
   let newMovie = req.body;
   let missingFields = [];
   console.log(newMovie);
   if (!newMovie.title) {
-    missingFields.push('title');
+    missingFields.push("title");
   }
   if (!newMovie.year) {
-    missingFields.push('year');
+    missingFields.push("year");
   }
   if (!newMovie.genre) {
-    missingFields.push('genre');
+    missingFields.push("genre");
   }
   if (!newMovie.description) {
-    missingFields.push('description');
+    missingFields.push("description");
   }
   if (!newMovie.director) {
-    missingFields.push('director');
+    missingFields.push("director");
   }
   if (missingFields.length > 0) {
     res
       .status(400)
       .send(
         `Missing ${
-          missingFields.length > 1 ? missingFields.join(', ') : missingFields[0]
+          missingFields.length > 1 ? missingFields.join(", ") : missingFields[0]
         }.`
       );
   }
@@ -187,7 +185,7 @@ app.post('/movies', (req, res) => {
   res.status(200).send(`Successfully added ${newMovie.title}.`);
 });
 
-app.delete('/movies/:title', (req, res) => {
+app.delete("/movies/:title", (req, res) => {
   const movie = topMovies.find((movie) => {
     return movie.title === req.params.title;
   });
@@ -196,22 +194,22 @@ app.delete('/movies/:title', (req, res) => {
       return m.title !== movie.title;
     });
     console.log(topMovies);
-    res.status(201).send('Movie' + movie.title + ' was deleted.');
+    res.status(201).send("Movie" + movie.title + " was deleted.");
   }
 });
 
-app.get('/genres/:genre', (req, res) => {
+app.get("/genres/:genre", (req, res) => {
   const moviesByGenre = topMovies.filter(
     (movie) => movie.genre === req.params.genre
   );
   res.status(200).json(moviesByGenre);
 });
 
-app.get('/directors/', (req, res) => {
+app.get("/directors/", (req, res) => {
   res.status(200).json(directors);
 });
 
-app.get('/directors/:director', (req, res) => {
+app.get("/directors/:director", (req, res) => {
   const { director } = req.params;
   const foundDirector = directors.find((person) =>
     person.name.includes(director)
@@ -223,17 +221,17 @@ app.get('/directors/:director', (req, res) => {
   }
 });
 
-app.post('/users', (req, res) => {
+app.post("/users", (req, res) => {
   const newUser = req.body;
   if (!newUser.username) {
     res.status(400).send(`Missing ${newUser.username}.`);
   }
-  users.push(newUser);
-  console.log(users);
+  Users.push(newUser);
+  console.log(Users);
   res.status(200).send(`Successfully added ${newUser.username}.`);
 });
 
-app.put('/users/:username', (req, res) => {
+app.put("/users/:username", (req, res) => {
   const user = users.find((user) => {
     return user.username === req.params.username;
   });
@@ -245,7 +243,7 @@ app.put('/users/:username', (req, res) => {
   res.status(200).send(`Successfully updated!`);
 });
 
-app.delete('/users/:username', (req, res) => {
+app.delete("/users/:username", (req, res) => {
   const user = users.find((user) => {
     return user.username === req.params.username;
   });
@@ -254,19 +252,50 @@ app.delete('/users/:username', (req, res) => {
       return obj.username !== user.username;
     });
     console.log(users);
-    res.status(201).send('User' + req.params.username + ' was deleted.');
+    res.status(201).send("User" + req.params.username + " was deleted.");
   }
 });
-
-app.get('/documentation', (req, res) => {
-  res.sendFile('public/documentation.html', { root: __dirname });
+// Delete a user by username
+app.delete("/users/:Username", (req, res) => {
+  Users.findOneAndRemove({ Username: req.params.Username })
+    .then((user) => {
+      if (!user) {
+        res.status(400).send(req.params.Username + " was not found");
+      } else {
+        res.status(200).send(req.params.Username + " was deleted.");
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).send("Error: " + err);
+    });
 });
 
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
+app.get("/documentation", (req, res) => {
+  res.sendFile("public/documentation.html", { root: __dirname });
 });
+
+// Middlewares
+function errorHandler(err, req, res, next) {
+  /* eslint-enable no-unused-vars */
+  const statusCode = res.statusCode !== 200 ? res.statusCode : 500;
+  res.status(statusCode);
+  res.json({
+    message: err.message,
+    stack: process.env.NODE_ENV === "production" ? "🥞" : err.stack,
+  });
+}
+
+app.use(errorHandler);
+
+function notFound(req, res, next) {
+  res.status(404);
+  const error = new Error(`🔍 - Not Found - ${req.originalUrl}`);
+  next(error);
+}
+
+app.use(notFound);
 
 app.listen(8080, () => {
-  console.log('Your app is listening on port 8080.');
+  console.log("Your app is listening on port 8080.");
 });
