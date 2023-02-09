@@ -1,20 +1,24 @@
 //IMPORTS//
-const express = require("express"),
- uuid = require("uuid");
- const path = require("path");
- const methodOverride = require("method-override");
- 
+const express = require("express");
+const uuid = require("uuid");
+const path = require("path");
+const methodOverride = require("method-override");
+const cors = require("cors");
 
 const morgan = require("morgan");
 
 const app = express();
-bodyParser = require("body-parser"),
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({
-  extended: true
-}));
-require('./auth')(app);
-const passport = require('./passport');
+(bodyParser = require("body-parser")), app.use(bodyParser.json());
+app.use(cors("*"));
+app.use(
+  bodyParser.urlencoded({
+    extended: true,
+  })
+);
+
+let auth = require("./auth")(app);
+
+const passport = require("./passport");
 
 const fs = require("fs");
 const mongoose = require("mongoose");
@@ -22,60 +26,58 @@ const Models = require("./models.js");
 
 const Movies = Models.Movie;
 const Users = Models.User;
-const Genres = Models.Gener;
-const Directors = Models.Director;
 
-
-mongoose.connect("mongodb://localhost:27017/test", { 
-  useNewUrlParser: true, 
+mongoose.connect("mongodb://localhost:27017/test", {
+  useNewUrlParser: true,
   useUnifiedTopology: true,
- });
+});
 
- 
 //log resuests to server
 app.use(morgan("common"));
 
- //default text response when at /
- app.get ("/",(req,res) =>{
+//default text response when at /
+app.get("/", (req, res) => {
   res.send("welcom to myFlex");
 });
 
-  app.get("/users",function (req, res) {
-    Users.find()
-      .then(function(users)  {
-        res.status(201).json(users);
+app.get("/users", function (req, res) {
+  Users.find()
+    .then(function (users) {
+      res.status(201).json(users);
+    })
+    .catch(function (err) {
+      console.error(err);
+      res.status(500).send("Error: " + err);
+    });
+});
+
+//ES6 javascript syntax
+app.get(
+  "/movies",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    Movies.find()
+      .then((movies) => {
+        console.log(movies);
+        res.status(200).json(movies);
       })
-      .catch(function(err) {
+      .catch((err) => {
         console.error(err);
         res.status(500).send("Error: " + err);
       });
-  });
-
- //ES6 javascript syntax
-app.get("/movies",passport.authenticate('jwt', { session: false }), (req, res) => {
-  Movies.find()
-  .then((movies) => {
-    console.log(movies)
-  res.status(200).json(movies);
-}).catch((err) => {
-  console.error(err);
-  res.status(500).send("Error: " + err);
-});
-});
-
+  }
+);
 
 // MORGAN //////
 // accessLogStream uses the fs and path modules to append "log.txt"
-const accessLogStream = fs.createWriteStream(
-  path.join(__dirname, "log.txt"),{
-  flags:"a",
+const accessLogStream = fs.createWriteStream(path.join(__dirname, "log.txt"), {
+  flags: "a",
 });
 
 // morgan pkg logs a timestamp to "log.txt"
-app.use(morgan("combined", { stream: accessLogStream }
-));
+app.use(morgan("combined", { stream: accessLogStream }));
 
-app.use("/documentation.html",express.static("public"));
+app.use("/documentation.html", express.static("public"));
 
 app.use(methodOverride());
 
@@ -85,46 +87,49 @@ app.use((err, req, res, next) => {
 });
 
 app.post("/users", (req, res) => {
-  Users.findOne({ Username: req.body.Username })
-    .then((user) => {
-      if (user) {
-        return res.status(400).send(req.body.Username + "already exists");
-      } else {
-       
-        Users.create({
-            Username: req.body.Username,
-            Password: req.body.Password,
-            Email: req.body.Email,
-            Birthday: req.body.Birthday
-          })
-          .then((user) =>{res.status(201).json(user) })
+  Users.findOne({ Username: req.body.Username }).then((user) => {
+    if (user) {
+      return res.status(400).send(req.body.Username + "already exists");
+    } else {
+      Users.create({
+        Username: req.body.Username,
+        Password: req.body.Password,
+        Email: req.body.Email,
+        Birthday: req.body.Birthday,
+      })
+        .then((user) => {
+          res.status(201).json(user);
+        })
 
         .catch((error) => {
           console.error(error);
           res.status(500).send("Error: " + error);
-        })
-      }
-    })
-});
-
-// Add a movie to a user"s list of favorites
-app.post("/users/:Username/movies/:MovieID", (req, res) => {
-  Users.findOneAndUpdate({ Username: req.params.Username }, {
-     $push: { FavoriteMovies: req.params.MovieID }
-   },
-   { new: true }, // This line makes sure that the updated document is returned
-  (err, updatedUser) => {
-    if (err) {
-      console.error(err);
-      res.status(500).send("Error: " + err);
-    } else {
-      res.json(updatedUser);
+        });
     }
   });
 });
 
+// Add a movie to a user"s list of favorites
+app.post("/users/:Username/movies/:MovieID", (req, res) => {
+  Users.findOneAndUpdate(
+    { Username: req.params.Username },
+    {
+      $push: { FavoriteMovies: req.params.MovieID },
+    },
+    { new: true }, // This line makes sure that the updated document is returned
+    (err, updatedUser) => {
+      if (err) {
+        console.error(err);
+        res.status(500).send("Error: " + err);
+      } else {
+        res.json(updatedUser);
+      }
+    }
+  );
+});
+
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname+"/public/documentation.html"));
+  res.sendFile(path.join(__dirname + "/public/documentation.html"));
   // res.send("Welcome to Movies API!");
 });
 
@@ -142,15 +147,14 @@ app.get("/movies/:title", (req, res) => {
 // Get a single movie by id
 app.get("/movies/id/:id", (req, res) => {
   const { id } = req.params;
-  
+
   const movie = topMovies.find((movie) => movie.movied === +id);
   if (movie) {
     res.status(200).json(movie);
   } else {
     res.status(400);
   }
-}); 
-
+});
 
 app.post("/movies", (req, res) => {
   let newMovie = req.body;
