@@ -2,3 +2,6 @@
 ::ffff:127.0.0.1 - - [07/Feb/2023:10:36:48 +0000] "POST /login HTTP/1.1" 404 1470 "http://localhost:62775/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/109.0"
 ::1 - - [09/Feb/2023:08:55:12 +0000] "POST /users HTTP/1.1" 201 171 "-" "PostmanRuntime/7.30.1"
 ::1 - - [09/Feb/2023:08:55:28 +0000] "POST /loginsadf HTTP/1.1" 404 1474 "-" "PostmanRuntime/7.30.1"
+::1 - - [09/Feb/2023:21:56:47 +0000] "POST /users HTTP/1.1" 400 24 "-" "PostmanRuntime/7.30.1"
+::1 - - [09/Feb/2023:21:57:01 +0000] "POST /users HTTP/1.1" 201 169 "-" "PostmanRuntime/7.30.1"
+::1 - - [13/Feb/2023:11:39:55 +0000] "POST /users HTTP/1.1" 201 163 "-" "PostmanRuntime/7.30.0"

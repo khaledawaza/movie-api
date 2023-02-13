@@ -27,7 +27,9 @@ const Models = require("./models.js");
 const Movies = Models.Movie;
 const Users = Models.User;
 
-mongoose.connect("mongodb://localhost:27017/test", {
+// const MONGO_URL = "mongodb://localhost:27017/movies";
+const MONGO_URL = "mongodb+srv://admin:admin@cluster0.vg1x4ip.mongodb.net/?retryWrites=true&w=majority";
+mongoose.connect(MONGO_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
